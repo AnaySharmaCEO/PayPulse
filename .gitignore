@@ -1,0 +1,35 @@
+# Environment and secrets (never commit secrets)
+.env*
+!.env.example
+
+# Process and workbench files (private to developer, not in public repo)
+.workbench/
+
+# Spikes (throwaway exploratory scripts)
+spikes/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+build/
+.output/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System and editor files
+.DS_Store
+Thumbs.db
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

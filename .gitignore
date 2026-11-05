@@ -1,8 +1,8 @@
-# Environment and secrets (never commit secrets)
+# Environment and secrets
 .env*
 !.env.example
 
-# Process and workbench files (private to developer, not in public repo)
+# Process and workbench files
 .workbench/
 
 # Spikes (throwaway exploratory scripts)

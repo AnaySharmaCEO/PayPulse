@@ -1,0 +1,23 @@
+{
+  "name": "@paypulse/api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PayPulse Webhook Ingestion Router & Backend Gateway",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/__tests__/*.test.js",
+    "start": "node --env-file=../../.env dist/index.js",
+    "dev": "node --env-file=../../.env --watch dist/index.js"
+  },
+  "dependencies": {
+    "@paypulse/core": "1.0.0",
+    "fastify": "^5.2.1",
+    "@fastify/cors": "^10.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  }
+}

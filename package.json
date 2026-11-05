@@ -1,0 +1,34 @@
+{
+  "name": "paypulse",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Autonomous payment guardian and self-healing layer for PayPal integrations",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run --workspaces build",
+    "test": "npm run --workspaces test",
+    "lint": "npm run --workspaces lint",
+    "typecheck": "npm run --workspaces typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "keywords": [
+    "paypal",
+    "payments",
+    "resilience",
+    "idempotency",
+    "reconciliation",
+    "autonomous-agent"
+  ],
+  "author": "Anay Sharma",
+  "license": "MIT"
+}

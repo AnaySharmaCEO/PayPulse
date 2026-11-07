@@ -10,7 +10,7 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
+      - name: Ping Supabase Services
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -19,15 +19,24 @@ jobs:
             echo "Secrets not configured, skipping ping"
             exit 0
           fi
-          echo "Pinging Supabase PostgREST root to maintain active status..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+          
+          echo "Pinging Supabase Auth health endpoint..."
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/auth/v1/health")
+          echo "Auth health HTTP status: $AUTH_STATUS"
+
+          echo "Pinging PostgREST endpoint with table query..."
+          REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/")
-          echo "Response code: $STATUS"
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            "$SUPABASE_URL/rest/v1/orders?select=id&limit=1")
+          echo "PostgREST query HTTP status: $REST_STATUS"
+
+          # Auth endpoint returns 200; PostgREST returns 200 (if table migrated) or 404 (if pre-migration)
+          if [ "$AUTH_STATUS" -eq 200 ]; then
             echo "Keepalive successful. Supabase project is active."
           else
-            echo "Keepalive returned non-2xx status: $STATUS"
+            echo "Keepalive failed. Auth service returned $AUTH_STATUS"
             exit 1
           fi

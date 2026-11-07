@@ -6,7 +6,9 @@ import {
   addMoney,
   subtractMoney,
   multiplyMoney,
-  createMoney
+  createMoney,
+  serializeMoney,
+  deserializeMoney
 } from '../money.js';
 
 test('Money - parsing and formatting USD', () => {
@@ -14,6 +16,29 @@ test('Money - parsing and formatting USD', () => {
   assert.equal(m.amountMinor, 4999n);
   assert.equal(m.currency, 'USD');
   assert.equal(formatMoneyString(m), '49.99');
+});
+
+test('Money - JSON serialization safety', () => {
+  const m = parseMoneyString('49.99', 'USD');
+  const jsonString = JSON.stringify(m);
+  const parsed = JSON.parse(jsonString);
+  assert.equal(parsed.amountMinor, '4999');
+  assert.equal(parsed.currency, 'USD');
+  assert.equal(parsed.formatted, '49.99');
+
+  const restored = deserializeMoney(parsed);
+  assert.equal(restored.amountMinor, 4999n);
+  assert.equal(restored.currency, 'USD');
+});
+
+test('Money - explicit serializeMoney helper', () => {
+  const m = createMoney(15000n, 'EUR');
+  const s = serializeMoney(m);
+  assert.deepEqual(s, {
+    amountMinor: '15000',
+    currency: 'EUR',
+    formatted: '150.00'
+  });
 });
 
 test('Money - integer input for decimal currency', () => {

@@ -1,0 +1,36 @@
+{
+  "name": "@paypulse/adapters",
+  "version": "1.0.0",
+  "private": true,
+  "description": "I/O Adapters for PayPulse: PayPal REST client, OAuth cache, Webhook Signature Verifier, and Supabase PostgREST",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/__tests__/*.test.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@paypulse/core": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "paypulse",
+    "adapters",
+    "paypal",
+    "supabase"
+  ],
+  "author": "Anay Sharma",
+  "license": "MIT"
+}

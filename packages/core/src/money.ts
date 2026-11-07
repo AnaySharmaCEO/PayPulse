@@ -13,14 +13,46 @@ const CURRENCY_EXPONENTS: Record<CurrencyCode, number> = {
   JPY: 0
 };
 
+export interface SerializedMoney {
+  readonly amountMinor: string;
+  readonly currency: CurrencyCode;
+  readonly formatted: string;
+}
+
 /**
  * Creates an immutable Money value object from integer minor units.
  */
 export function createMoney(amountMinor: bigint, currency: CurrencyCode): Money {
   return Object.freeze({
     amountMinor,
-    currency
+    currency,
+    toJSON(): SerializedMoney {
+      return {
+        amountMinor: amountMinor.toString(),
+        currency,
+        formatted: formatMoneyString({ amountMinor, currency })
+      };
+    }
   });
+}
+
+/**
+ * Safely converts any Money object or serialized representation to a JSON-safe object.
+ */
+export function serializeMoney(money: Money): SerializedMoney {
+  return {
+    amountMinor: money.amountMinor.toString(),
+    currency: money.currency,
+    formatted: formatMoneyString(money)
+  };
+}
+
+/**
+ * Deserializes a stored or received payload into a domain Money object.
+ */
+export function deserializeMoney(data: { amountMinor: string | number | bigint; currency: CurrencyCode }): Money {
+  const minor = BigInt(data.amountMinor);
+  return createMoney(minor, data.currency);
 }
 
 /**

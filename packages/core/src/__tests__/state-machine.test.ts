@@ -11,6 +11,7 @@ import {
 test('Order State Machine - valid progression', () => {
   assert.equal(transitionOrder('CREATED', 'APPROVED'), 'APPROVED');
   assert.equal(transitionOrder('APPROVED', 'COMPLETED'), 'COMPLETED');
+  assert.equal(transitionOrder('CREATED', 'COMPLETED'), 'COMPLETED'); // Direct capture acceleration
 });
 
 test('Order State Machine - idempotent self-transition', () => {

@@ -11,7 +11,7 @@ export class StateTransitionError extends Error {
  * Valid transitions for PayPal Order state.
  */
 const VALID_ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
-  CREATED: ['SAVED', 'APPROVED', 'VOIDED', 'PAYER_ACTION_REQUIRED'],
+  CREATED: ['SAVED', 'APPROVED', 'VOIDED', 'PAYER_ACTION_REQUIRED', 'COMPLETED'], // COMPLETED allows direct capture acceleration
   SAVED: ['APPROVED', 'VOIDED'],
   APPROVED: ['COMPLETED', 'VOIDED'],
   COMPLETED: [], // Terminal

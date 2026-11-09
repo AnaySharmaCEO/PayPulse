@@ -11,6 +11,7 @@ import {
   PayPalWebhookVerifier,
   PayPalOrdersClient,
   SupabaseClient,
+  Channel3Client,
   type WebhookSignatureHeaders
 } from '@paypulse/adapters';
 import { ReconcilerWorker } from './reconciler/worker.js';
@@ -34,6 +35,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
 
   const supabase = options.supabase || new SupabaseClient();
   const verifier = options.verifier || new PayPalWebhookVerifier();
+  const channel3 = new Channel3Client();
   const reconciler =
     options.reconciler ||
     new ReconcilerWorker({
@@ -282,6 +284,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
   });
 
   // 5. Query Endpoints
+  fastify.get('/api/catalog', async () => channel3.getProducts());
   fastify.get('/api/orders', async () => supabase.getOrders());
   fastify.get('/api/events', async () => supabase.getEvents());
   fastify.get('/api/expectations', async () => supabase.getExpectations());

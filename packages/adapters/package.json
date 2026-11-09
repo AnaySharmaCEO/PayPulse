@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@paypal/paypal-server-sdk": "^2.5.0",
     "@paypulse/core": "1.0.0"
   },
   "devDependencies": {

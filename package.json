@@ -11,7 +11,11 @@
     "build": "npm run --workspaces build",
     "test": "npm run --workspaces test",
     "lint": "npm run --workspaces lint",
-    "typecheck": "npm run --workspaces typecheck"
+    "typecheck": "npm run --workspaces typecheck",
+    "start:api": "npm run --workspace=@paypulse/api start",
+    "dev:api": "npm run --workspace=@paypulse/api dev",
+    "dev:web": "npm run --workspace=@paypulse/web dev",
+    "build:web": "npm run --workspace=@paypulse/web build"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",

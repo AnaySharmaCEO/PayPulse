@@ -1,6 +1,20 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { AgGridReact } from 'ag-grid-react';
+import {
+  ColDef,
+  GridReadyEvent,
+  GridApi,
+  ModuleRegistry,
+  AllCommunityModule,
+  ICellRendererParams,
+  RowClickedEvent
+} from 'ag-grid-community';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-quartz.css';
 import { Order, LensType, Currency } from '../../types';
 import { formatMoney, FX_RATE } from '../../data/mockProducts';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface OrderGridProps {
   orders: Order[];
@@ -21,6 +35,8 @@ export const OrderGrid: React.FC<OrderGridProps> = ({
   onToggleExpand,
   onOpenDoctor
 }) => {
+  const gridApiRef = useRef<GridApi<Order> | null>(null);
+
   const mmss = (s: number) =>
     String(Math.floor(s / 60)).padStart(2, '0') +
     ':' +
@@ -119,6 +135,101 @@ export const OrderGrid: React.FC<OrderGridProps> = ({
     );
   };
 
+  // AG Grid Column Definitions
+  const colDefs: ColDef<Order>[] = [
+    {
+      headerName: 'Order',
+      field: 'id',
+      width: 150,
+      cellRenderer: (params: ICellRendererParams<Order>) => {
+        if (!params.data) return null;
+        const isExp = expandedIds.has(params.data.id);
+        return (
+          <div className="c mono">
+            <span className="chev">{isExp ? '▾' : '▸'}</span>
+            {params.data.id}
+          </div>
+        );
+      }
+    },
+    {
+      headerName: 'Amount',
+      field: 'amount',
+      width: 130,
+      cellClass: 'mono r',
+      valueFormatter: params => {
+        if (!params.data) return '';
+        return formatMoney(params.data.amount, params.data.cur);
+      }
+    },
+    {
+      headerName: 'Status',
+      field: 'status',
+      width: 150,
+      cellRenderer: (params: ICellRendererParams<Order>) => {
+        if (!params.data) return null;
+        return <div className="c">{getBadge(params.data)}</div>;
+      }
+    },
+    {
+      headerName: 'SLA countdown',
+      field: 'sla',
+      width: 150,
+      cellRenderer: (params: ICellRendererParams<Order>) => {
+        if (!params.data) return null;
+        const sla = getSlaCell(params.data);
+        return <div className={`c mono sla ${sla.c}`}>{sla.t}</div>;
+      }
+    },
+    {
+      headerName: 'Prevention',
+      width: 160,
+      cellRenderer: (params: ICellRendererParams<Order>) => {
+        if (!params.data) return null;
+        return (
+          <div className="c">
+            {params.data.status === 'HEALED' ? (
+              params.data.patch ? (
+                <span className="badge ok pulse">PREVENTION READY</span>
+              ) : (
+                <span className="badge warn">DIAGNOSING</span>
+              )
+            ) : (
+              <span style={{ color: 'var(--tx-3)' }}>—</span>
+            )}
+          </div>
+        );
+      }
+    },
+    {
+      headerName: 'Actions',
+      flex: 1,
+      cellRenderer: (params: ICellRendererParams<Order>) => {
+        if (!params.data) return null;
+        const o = params.data;
+        return (
+          <div className="c act">
+            <button
+              className="btn sm"
+              onClick={e => onToggleExpand(o.id, e)}
+            >
+              Inspect packet
+            </button>
+            {o.status === 'HEALED' && (
+              <button
+                className="btn sm"
+                disabled={!o.patch}
+                onClick={e => onOpenDoctor(o.id, e)}
+              >
+                AI Doctor
+              </button>
+            )}
+          </div>
+        );
+      }
+    }
+  ];
+
   // Pivot view rendering
   if (lens === 'pivot') {
     const byCur: Record<Currency, Order[]> = { USD: [], EUR: [], JPY: [] };
@@ -180,76 +291,47 @@ export const OrderGrid: React.FC<OrderGridProps> = ({
       })
     : orders;
 
+  const onGridReady = (params: GridReadyEvent<Order>) => {
+    gridApiRef.current = params.api;
+  };
+
+  const handleRowClicked = (event: RowClickedEvent<Order>) => {
+    if (event.data) {
+      onSelectOrder(event.data.id);
+    }
+  };
+
+  const selectedOrder = orders.find(o => o.id === selectedId);
+  const isSelectedExpanded = selectedId && expandedIds.has(selectedId);
+
   return (
     <section className="card gridwrap">
-      <div className="gh">
-        <div>Order</div>
-        <div className="r">Amount</div>
-        <div>Status</div>
-        <div>SLA countdown</div>
-        <div>Prevention</div>
-        <div style={{ textAlign: 'right' }}>Actions</div>
+      <div
+        className="ag-theme-quartz-dark"
+        style={{
+          width: '100%',
+          height: `${Math.max(200, visibleOrders.length * 48 + 48)}px`,
+          backgroundColor: 'transparent'
+        }}
+      >
+        <AgGridReact<Order>
+          rowData={visibleOrders}
+          columnDefs={colDefs}
+          onGridReady={onGridReady}
+          onRowClicked={handleRowClicked}
+          rowHeight={46}
+          headerHeight={36}
+          suppressCellFocus={true}
+          animateRows={false}
+          domLayout="autoHeight"
+          rowClassRules={{
+            'breach': params => params.data?.status === 'BREACHED',
+            'sel': params => params.data?.id === selectedId
+          }}
+        />
       </div>
 
-      {visibleOrders.length ? (
-        visibleOrders.map(o => {
-          const sla = getSlaCell(o);
-          const isSelected = selectedId === o.id;
-          const isBreached = o.status === 'BREACHED';
-          const isExpanded = expandedIds.has(o.id);
-
-          return (
-            <React.Fragment key={o.id}>
-              <div
-                className={`row ${isSelected ? 'sel' : ''} ${isBreached ? 'breach' : ''}`}
-                onClick={() => onSelectOrder(o.id)}
-              >
-                <div className="c mono">
-                  <span className="chev">{isExpanded ? '▾' : '▸'}</span>
-                  {o.id}
-                </div>
-                <div className="c mono r" style={{ justifyContent: 'flex-end' }}>
-                  {formatMoney(o.amount, o.cur)}
-                </div>
-                <div className="c">{getBadge(o)}</div>
-                <div className={`c mono sla ${sla.c}`}>{sla.t}</div>
-                <div className="c">
-                  {o.status === 'HEALED' ? (
-                    o.patch ? (
-                      <span className="badge ok pulse">PREVENTION READY</span>
-                    ) : (
-                      <span className="badge warn">DIAGNOSING</span>
-                    )
-                  ) : (
-                    <span style={{ color: 'var(--tx-3)' }}>—</span>
-                  )}
-                </div>
-                <div className="c act">
-                  <button
-                    className="btn sm"
-                    onClick={e => onToggleExpand(o.id, e)}
-                  >
-                    Inspect packet
-                  </button>
-                  {o.status === 'HEALED' && (
-                    <button
-                      className="btn sm"
-                      disabled={!o.patch}
-                      onClick={e => onOpenDoctor(o.id, e)}
-                    >
-                      AI Doctor
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {isExpanded && renderDetail(o)}
-            </React.Fragment>
-          );
-        })
-      ) : (
-        <div className="empty">No orders match this lens</div>
-      )}
+      {isSelectedExpanded && selectedOrder && renderDetail(selectedOrder)}
     </section>
   );
 };

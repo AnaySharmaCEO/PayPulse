@@ -98,6 +98,19 @@ export class SupabaseClient {
     return (await res.json()) as DbOrder[];
   }
 
+  async findOrderById(orderId: string): Promise<DbOrder | null> {
+    const res = await this.fetchFn(
+      `${this.baseUrl}/rest/v1/orders?id=eq.${encodeURIComponent(orderId)}&limit=1`,
+      { headers: this.headers }
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to query order by id: ${res.status} ${err}`);
+    }
+    const orders = (await res.json()) as DbOrder[];
+    return orders.length > 0 ? orders[0] : null;
+  }
+
   async findOrderByPayPalId(paypalOrderId: string): Promise<DbOrder | null> {
     const res = await this.fetchFn(
       `${this.baseUrl}/rest/v1/orders?paypal_order_id=eq.${encodeURIComponent(paypalOrderId)}&limit=1`,
@@ -236,6 +249,19 @@ export class SupabaseClient {
     return (await res.json()) as DbExpectation[];
   }
 
+  async findBreachedExpectations(asOf?: string): Promise<DbExpectation[]> {
+    const timestamp = asOf || new Date().toISOString();
+    const res = await this.fetchFn(
+      `${this.baseUrl}/rest/v1/expectations?status=eq.PENDING&expected_before=lte.${encodeURIComponent(timestamp)}&order=expected_before.asc&limit=25`,
+      { headers: this.headers }
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to query breached expectations: ${res.status} ${err}`);
+    }
+    return (await res.json()) as DbExpectation[];
+  }
+
   async updateExpectation(id: string, status: DbExpectation['status']): Promise<DbExpectation | null> {
     const res = await this.fetchFn(`${this.baseUrl}/rest/v1/expectations?id=eq.${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -277,6 +303,20 @@ export class SupabaseClient {
       throw new Error(`Failed to insert incident: ${res.status} ${err}`);
     }
     return (await res.json()) as DbIncident[];
+  }
+
+  async updateIncident(id: string, updates: Partial<DbIncident>): Promise<DbIncident | null> {
+    const res = await this.fetchFn(`${this.baseUrl}/rest/v1/incidents?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: this.headers,
+      body: JSON.stringify(updates)
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Failed to update incident: ${res.status} ${err}`);
+    }
+    const updated = (await res.json()) as DbIncident[];
+    return updated.length > 0 ? updated[0] : null;
   }
 
   async getIncidents(): Promise<DbIncident[]> {

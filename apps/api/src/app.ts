@@ -9,13 +9,17 @@ import cors from '@fastify/cors';
 import { transitionOrder } from '@paypulse/core';
 import {
   PayPalWebhookVerifier,
+  PayPalOrdersClient,
   SupabaseClient,
   type WebhookSignatureHeaders
 } from '@paypulse/adapters';
+import { ReconcilerWorker } from './reconciler/worker.js';
 
 export interface AppOptions {
   verifier?: PayPalWebhookVerifier;
   supabase?: SupabaseClient;
+  reconciler?: ReconcilerWorker;
+  autoStartReconciler?: boolean;
   logger?: boolean;
 }
 
@@ -30,6 +34,20 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
 
   const supabase = options.supabase || new SupabaseClient();
   const verifier = options.verifier || new PayPalWebhookVerifier();
+  const reconciler =
+    options.reconciler ||
+    new ReconcilerWorker({
+      supabase,
+      ordersClient: new PayPalOrdersClient()
+    });
+
+  if (options.autoStartReconciler) {
+    reconciler.start();
+  }
+
+  fastify.addHook('onClose', async () => {
+    reconciler.stop();
+  });
 
   // Custom parser preserving raw binary buffer on application/json for cryptographic signature verification
   fastify.addContentTypeParser('application/json', { parseAs: 'buffer' }, (req, body, done) => {
@@ -256,7 +274,14 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
     }
   });
 
-  // 4. Query Endpoints
+  // 4. Autonomous Reconciler Trigger
+  fastify.post('/api/reconciler/tick', async (request, reply) => {
+    const body = (request.body as Record<string, any>) || {};
+    const report = await reconciler.tick(body.as_of);
+    return reply.status(200).send(report);
+  });
+
+  // 5. Query Endpoints
   fastify.get('/api/orders', async () => supabase.getOrders());
   fastify.get('/api/events', async () => supabase.getEvents());
   fastify.get('/api/expectations', async () => supabase.getExpectations());

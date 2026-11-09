@@ -139,8 +139,8 @@ GEMINI_API_KEY=your_gemini_api_key
 CHANNEL3_API_KEY=
 
 # Server Ports
-PORT=3000
-VITE_API_URL=http://localhost:3000
+PORT=3001
+VITE_API_URL=http://localhost:3001
 ```
 
 ### 3. Run the Automated Test Suite (40/40 Passing)
@@ -160,7 +160,7 @@ Open two terminal windows:
 **Terminal 1 — Fastify API Gateway & Reconciler:**
 ```powershell
 npm run --workspace=@paypulse/api start
-# Running on http://localhost:3000
+# Running on http://localhost:3001
 ```
 
 **Terminal 2 — React Cockpit & Storefront:**

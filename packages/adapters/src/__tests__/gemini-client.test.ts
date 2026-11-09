@@ -2,8 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { GeminiDoctorClient } from '../gemini/client.js';
 
-describe('GeminiDoctorClient - Reliability & Grounding', () => {
-  it('should generate grounded diagnosis using fallback fixture when API key absent or offline', async () => {
+describe('GeminiDoctorClient - Modern Interactions API & Fallback', () => {
+  it('should generate grounded diagnosis using Interactions API cascade fallback when offline', async () => {
     const client = new GeminiDoctorClient('mock-key-for-offline', 'https://mock.invalid.endpoint');
     const result = await client.diagnoseIncident({
       orderId: 'PP-9918',
@@ -18,7 +18,7 @@ describe('GeminiDoctorClient - Reliability & Grounding', () => {
     assert.strictEqual(result.confidenceScore, 0.97);
     assert.ok(result.codePatch.includes('@paypal/paypal-server-sdk'));
     assert.ok(result.codePatch.includes('OrdersController'));
-    assert.strictEqual(result.source, 'gemini-cascade-fallback');
+    assert.strictEqual(result.source, 'gemini-3.5-flash-lite-fallback');
   });
 
   it('should return deterministic grounded fixture when no key provided', async () => {

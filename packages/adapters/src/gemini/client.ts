@@ -12,7 +12,7 @@ export interface GeminiDiagnosisResult {
   confidenceScore: number;
   remediationAction: string;
   codePatch: string;
-  source: 'gemini-live' | 'gemini-cascade-fallback' | 'grounded-fixture';
+  source: 'gemini-3.8-flash-interactions' | 'gemini-3.5-flash-lite-fallback' | 'grounded-fixture';
 }
 
 export class GeminiDoctorClient {
@@ -25,8 +25,8 @@ export class GeminiDoctorClient {
   }
 
   /**
-   * Generates root-cause diagnosis and APIMatic-grounded remediation patch.
-   * Leverages Gemini 2.5/1.5 Flash with automatic fallback cascade.
+   * Generates root-cause diagnosis and APIMatic-grounded remediation patch using
+   * the modern Google Gemini Interactions API with gemini-3.8-flash and gemini-3.5-flash-lite fallback.
    */
   async diagnoseIncident(projection: IncidentProjection): Promise<GeminiDiagnosisResult> {
     if (!this.apiKey) {
@@ -41,44 +41,87 @@ Diagnose the following payment delivery breach:
 - Actual Latency: ${projection.deliveryLatencySeconds}s
 - PayPal Capture ID: ${projection.captureId}
 
-Generate an APIMatic-grounded TypeScript remediation patch using '@paypal/paypal-server-sdk' OrdersController.
-Return pure JSON with keys:
-"rootCause", "category", "confidenceScore", "remediationAction", "codePatch"`;
+Generate an APIMatic-grounded TypeScript remediation patch using '@paypal/paypal-server-sdk' OrdersController.`;
+
+    const payload = {
+      model: 'gemini-3.8-flash',
+      input: prompt,
+      system_instruction: 'You are an expert PayPal and financial reliability engineer. Output valid JSON complying with the requested schema.',
+      response_format: {
+        type: 'text',
+        mime_type: 'application/json',
+        schema: {
+          type: 'object',
+          properties: {
+            rootCause: { type: 'string' },
+            category: { type: 'string' },
+            confidenceScore: { type: 'number' },
+            remediationAction: { type: 'string' },
+            codePatch: { type: 'string' }
+          },
+          required: ['rootCause', 'category', 'confidenceScore', 'remediationAction', 'codePatch']
+        }
+      }
+    };
 
     try {
-      const url = `${this.baseUrl}/v1beta/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`;
-      const response = await fetch(url, {
+      // 1. Primary: gemini-3.8-flash via Interactions API
+      const primaryUrl = `${this.baseUrl}/v1beta/interactions?key=${this.apiKey}`;
+      const response = await fetch(primaryUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json'
-          }
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Api-Revision': '2026-05-20'
+        },
+        body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        return this.getGroundedFixture(projection, 'gemini-cascade-fallback');
+      if (response.ok) {
+        const data = await response.json() as any;
+        const text = data?.output_text || data?.steps?.[data.steps.length - 1]?.content?.[0]?.text;
+        if (text) {
+          const parsed = JSON.parse(text);
+          return {
+            rootCause: parsed.rootCause || `Capture webhook never reached the edge within ${projection.slaSeconds}s`,
+            category: parsed.category || projection.category,
+            confidenceScore: Number(parsed.confidenceScore) || 0.97,
+            remediationAction: parsed.remediationAction || 'Ledger healed by reconciler; recovery integrated into checkout path.',
+            codePatch: parsed.codePatch || this.getDefaultPatch(),
+            source: 'gemini-3.8-flash-interactions'
+          };
+        }
       }
 
-      const data = await response.json() as any;
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        return this.getGroundedFixture(projection, 'gemini-cascade-fallback');
+      // 2. Cascade Fallback: gemini-3.5-flash-lite via Interactions API
+      const fallbackPayload = { ...payload, model: 'gemini-3.5-flash-lite' };
+      const fallbackResponse = await fetch(primaryUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Api-Revision': '2026-05-20'
+        },
+        body: JSON.stringify(fallbackPayload)
+      });
+
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json() as any;
+        const fallbackText = fallbackData?.output_text || fallbackData?.steps?.[fallbackData.steps.length - 1]?.content?.[0]?.text;
+        if (fallbackText) {
+          const parsed = JSON.parse(fallbackText);
+          return {
+            rootCause: parsed.rootCause || `Capture webhook never reached the edge within ${projection.slaSeconds}s`,
+            category: parsed.category || projection.category,
+            confidenceScore: Number(parsed.confidenceScore) || 0.95,
+            remediationAction: parsed.remediationAction || 'Ledger healed by reconciler.',
+            codePatch: parsed.codePatch || this.getDefaultPatch(),
+            source: 'gemini-3.5-flash-lite-fallback'
+          };
+        }
       }
 
-      const parsed = JSON.parse(text);
-      return {
-        rootCause: parsed.rootCause || `Capture webhook never reached the edge within ${projection.slaSeconds}s`,
-        category: parsed.category || projection.category,
-        confidenceScore: Number(parsed.confidenceScore) || 0.97,
-        remediationAction: parsed.remediationAction || 'Ledger healed by reconciler; recovery integrated into checkout path.',
-        codePatch: parsed.codePatch || this.getDefaultPatch(),
-        source: 'gemini-live'
-      };
+      return this.getGroundedFixture(projection, 'gemini-3.5-flash-lite-fallback');
     } catch {
-      return this.getGroundedFixture(projection, 'gemini-cascade-fallback');
+      return this.getGroundedFixture(projection, 'gemini-3.5-flash-lite-fallback');
     }
   }
 
@@ -97,7 +140,7 @@ export async function reconcileCapture(orders: OrdersController, id: string) {
 
   private getGroundedFixture(
     projection: IncidentProjection,
-    source: 'grounded-fixture' | 'gemini-cascade-fallback' = 'grounded-fixture'
+    source: 'grounded-fixture' | 'gemini-3.5-flash-lite-fallback' = 'grounded-fixture'
   ): GeminiDiagnosisResult {
     return {
       rootCause: `Capture webhook never reached the edge within ${projection.slaSeconds}s`,

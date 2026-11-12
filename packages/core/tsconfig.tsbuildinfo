@@ -1,1 +1,0 @@
-{"root":["./src/index.ts","./src/money.ts","./src/state-machine.ts","./src/types.ts","./src/__tests__/money.test.ts","./src/__tests__/state-machine.test.ts"],"version":"5.9.3"}

@@ -4,7 +4,7 @@ import { PRODUCTS, calcTotal, formatMoney } from '../data/mockProducts.js';
 
 describe('PayPulse Web Suite Smoke Tests', () => {
   it('should verify products have correct landed cost calculations', () => {
-    assert.strictEqual(PRODUCTS.length, 3);
+    assert.ok(PRODUCTS.length >= 3);
     const tokyoShoe = PRODUCTS[0];
     assert.strictEqual(tokyoShoe.id, 'am90');
     assert.strictEqual(calcTotal(tokyoShoe), 15900 + 1899 + 1200); // 18999

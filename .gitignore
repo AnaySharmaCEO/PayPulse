@@ -17,6 +17,14 @@ dist/
 build/
 .output/
 coverage/
+*.tsbuildinfo
+
+# Internal submission and workbench files
+DEMO_SCRIPT*.md
+DEVPOST*.md
+full_architecture_detail.md
+*-mock.html
+*-remaster.html
 
 # Logs
 *.log

@@ -1735,7 +1735,7 @@ kbd {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 104px;
+  bottom: 124px;
   transform: translate(-50%, 12px);
   z-index: 95;
   background: #16171a;
@@ -1782,7 +1782,7 @@ kbd {
 
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: 42px;
   transform: translateX(-50%);
   z-index: 85;
   display: flex;

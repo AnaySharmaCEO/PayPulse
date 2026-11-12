@@ -1,20 +1,7 @@
-import React, { useRef, useMemo } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import {
-  ColDef,
-  GridApi,
-  ModuleRegistry,
-  AllCommunityModule,
-  ICellRendererParams,
-  RowClickedEvent
-} from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-quartz.css';
+import React, { useMemo } from 'react';
 import { Order, LensType } from '../../types';
 import { formatMoney, normalizeToUsd } from '../../data/mockProducts';
-import { getOrderDisplayStatus, formatTimeMMSS } from '../../lib/labels';
-
-ModuleRegistry.registerModules([AllCommunityModule]);
+import { formatTimeMMSS } from '../../lib/labels';
 
 interface PaymentsTableProps {
   orders: Order[];
@@ -33,8 +20,6 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   onOpenEvidence,
   onOpenDiagnosis
 }) => {
-  const gridApiRef = useRef<GridApi<Order> | null>(null);
-
   const remainingSeconds = (o: Order) =>
     o.deadlineAt ? Math.max(0, Math.ceil((o.deadlineAt - Date.now()) / 1000)) : 0;
 
@@ -50,6 +35,47 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
       return { t: `closed +${o.lat ?? 44}s`, c: 'mute' };
     }
     return { t: 'on time', c: 'mute' };
+  };
+
+  const getBadge = (o: Order) => {
+    switch (o.status) {
+      case 'HEALED':
+        return (
+          <span className="badge ok">
+            <i />
+            Recovered
+          </span>
+        );
+      case 'COMPLETED':
+        return (
+          <span className="badge ok">
+            <i />
+            Paid
+          </span>
+        );
+      case 'BREACHED':
+        return (
+          <span className="badge bad pulse">
+            <i />
+            Confirmation overdue
+          </span>
+        );
+      case 'RECONCILING':
+        return (
+          <span className="badge warn pulse">
+            <i />
+            Recovering
+          </span>
+        );
+      case 'APPROVED':
+      default:
+        return (
+          <span className="badge">
+            <i />
+            Awaiting confirmation
+          </span>
+        );
+    }
   };
 
   // Filter for 'Orders at risk' lens
@@ -78,7 +104,10 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
     return Object.keys(byCur).map(cur => {
       const curOrders = byCur[cur];
       const healed = curOrders.filter(o => o.status === 'HEALED');
-      const lats = healed.map(o => o.lat ?? 0).filter(l => l > 0).sort((a, b) => a - b);
+      const lats = healed
+        .map(o => o.lat ?? 0)
+        .filter(l => l > 0)
+        .sort((a, b) => a - b);
       const totalAmount = healed.reduce((sum, o) => sum + o.amount, 0);
 
       return {
@@ -90,98 +119,6 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
       };
     });
   }, [orders, lens]);
-
-  const columnDefs = useMemo<ColDef<Order>[]>(() => {
-    return [
-      {
-        headerName: 'Order',
-        field: 'id',
-        width: 140,
-        cellRenderer: (params: ICellRendererParams<Order>) => (
-          <span className="mono">{params.value}</span>
-        )
-      },
-      {
-        headerName: 'Item',
-        field: 'item',
-        flex: 1.3,
-        minWidth: 180,
-        cellRenderer: (params: ICellRendererParams<Order>) => (
-          <span style={{ color: 'var(--tx-2)' }}>{params.value}</span>
-        )
-      },
-      {
-        headerName: 'Amount',
-        field: 'amount',
-        width: 130,
-        headerClass: 'r',
-        cellClass: 'mono r',
-        cellRenderer: (params: ICellRendererParams<Order>) =>
-          params.data ? formatMoney(params.data.amount, params.data.cur) : ''
-      },
-      {
-        headerName: 'Status',
-        field: 'status',
-        width: 190,
-        cellRenderer: (params: ICellRendererParams<Order>) => {
-          if (!params.data) return null;
-          const { badgeClass, label } = getOrderDisplayStatus(
-            params.data.status,
-            params.data.status === 'HEALED'
-          );
-          return (
-            <span className={`badge ${badgeClass}`}>
-              <i />
-              {label}
-            </span>
-          );
-        }
-      },
-      {
-        headerName: 'Confirm by',
-        width: 150,
-        cellRenderer: (params: ICellRendererParams<Order>) => {
-          if (!params.data) return null;
-          const c = getSlaCell(params.data);
-          return (
-            <span className={`mono sla ${c.c}`} data-sla={params.data.id}>
-              {c.t}
-            </span>
-          );
-        }
-      },
-      {
-        headerName: 'Actions',
-        width: 190,
-        headerClass: 'r',
-        cellClass: 'r',
-        cellRenderer: (params: ICellRendererParams<Order>) => {
-          if (!params.data) return null;
-          const order = params.data;
-          return (
-            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-              <button
-                className="btn sm"
-                data-act="evidence"
-                onClick={e => onOpenEvidence(order.id, e)}
-              >
-                Evidence
-              </button>
-              {order.status === 'HEALED' && (
-                <button
-                  className="btn sm"
-                  data-act="diag"
-                  onClick={e => onOpenDiagnosis(order.id, e)}
-                >
-                  Diagnosis
-                </button>
-              )}
-            </div>
-          );
-        }
-      }
-    ];
-  }, [onOpenEvidence, onOpenDiagnosis]);
 
   if (lens === 'pivot') {
     return (
@@ -221,35 +158,69 @@ export const PaymentsTable: React.FC<PaymentsTableProps> = ({
   }
 
   return (
-    <section className="card tbl ag-theme-quartz-dark" style={{ width: '100%' }}>
+    <section className="card tbl">
+      <div className="th">
+        <div>Order</div>
+        <div>Item</div>
+        <div className="r">Amount</div>
+        <div>Status</div>
+        <div>Confirm by</div>
+        <div className="r">Actions</div>
+      </div>
+
       {visibleOrders.length === 0 ? (
         <div className="empty">No payments match this view.</div>
       ) : (
-        <div style={{ height: Math.min(520, Math.max(220, visibleOrders.length * 54 + 44)) }}>
-          <AgGridReact<Order>
-            rowData={visibleOrders}
-            columnDefs={columnDefs}
-            rowHeight={52}
-            headerHeight={38}
-            animateRows={false}
-            rowSelection="single"
-            onGridReady={params => {
-              gridApiRef.current = params.api;
-            }}
-            onRowClicked={(event: RowClickedEvent<Order>) => {
-              if (event.data?.id) {
-                onSelectOrder(event.data.id);
-              }
-            }}
-            getRowClass={params => {
-              if (!params.data) return '';
-              const classes: string[] = ['tr'];
-              if (params.data.id === selectedId) classes.push('sel');
-              if (params.data.status === 'BREACHED') classes.push('breach');
-              return classes.join(' ');
-            }}
-          />
-        </div>
+        visibleOrders.map(o => {
+          const sla = getSlaCell(o);
+          const isSelected = selectedId === o.id;
+          const isBreached = o.status === 'BREACHED';
+
+          return (
+            <div
+              key={o.id}
+              className={`tr ${isSelected ? 'sel' : ''} ${isBreached ? 'breach' : ''}`}
+              data-id={o.id}
+              onClick={() => onSelectOrder(o.id)}
+            >
+              <div className="c mono">{o.id}</div>
+              <div className="c" style={{ color: 'var(--tx-2)' }}>
+                {o.item}
+              </div>
+              <div className="c mono r">{formatMoney(o.amount, o.cur)}</div>
+              <div className="c">{getBadge(o)}</div>
+              <div className={`c mono sla ${sla.c}`} data-sla={o.id}>
+                {sla.t}
+              </div>
+              <div className="c r" style={{ gap: 6 }}>
+                <button
+                  className="btn sm"
+                  data-act="evidence"
+                  data-id={o.id}
+                  onClick={e => {
+                    e.stopPropagation();
+                    onOpenEvidence(o.id, e);
+                  }}
+                >
+                  Evidence
+                </button>
+                {o.status === 'HEALED' && (
+                  <button
+                    className="btn sm"
+                    data-act="diag"
+                    data-id={o.id}
+                    onClick={e => {
+                      e.stopPropagation();
+                      onOpenDiagnosis(o.id, e);
+                    }}
+                  >
+                    Diagnosis
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })
       )}
     </section>
   );
